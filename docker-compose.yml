@@ -1,0 +1,83 @@
+version: '3'
+services:
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+  frontend:
+    build: ./ruby_frontend
+    command: bundle exec ruby frontend.rb
+    volumes:
+      - ./ruby_frontend:/service
+    ports:
+      - "4567:4567"
+    depends_on:
+      - zipkin
+    environment:
+      - ZIPKIN_HOST=zipkin:9411
+      - BACKEND1_HOST=backend_1:4567
+      - BACKEND2_HOST=backend_2:4567
+      - BACKEND3_HOST=backend_3:4570
+      - BACKEND4_HOST=backend_4:4567
+  backend_1:
+    build: ./ruby_backend
+    command: bundle exec ruby backend.rb
+    volumes:
+      - ./ruby_backend:/service
+    ports:
+      - "4568:4567"
+    depends_on:
+      - zipkin
+    environment:
+      - ZIPKIN_HOST=zipkin:9411
+  backend_2:
+    build: ./nodejs_backend
+    command: node index.js
+    volumes:
+      - ./nodejs_backend:/service
+    ports:
+      - "4569:4567"
+    depends_on:
+      - zipkin
+    environment:
+      - ZIPKIN_HOST=zipkin:9411
+  backend_3:
+    build: ./python_backend
+    command: python backend.py /files
+    volumes:
+      - ./python_backend:/service
+      - ./files:/files
+    ports:
+      - "4573:4570"
+    depends_on:
+      - zipkin
+    environment:
+      - ZIPKIN_HOST=zipkin
+  spooler:
+    build: ./cpp_spooler
+    command: ./spooler /app/files
+    volumes:
+      - ./files:/app/files
+    depends_on:
+      - zipkin
+    environment:
+      - ZIPKIN_HOST=zipkin
+  backend_4:
+    build: ./go_backend
+    command: ./main
+    ports:
+      - "4570:4567"
+    depends_on:
+      - zipkin
+    environment:
+      - ZIPKIN_HOST=zipkin:9411
+  portainer:
+    image: portainer/portainer
+    ports:
+      - "9000:9000"
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+volumes:
+  portainer_data:
